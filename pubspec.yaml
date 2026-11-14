@@ -1,0 +1,39 @@
+name: fastink_flutter
+description: "A low-latency, page-lazy ink notebook for very large image documents."
+# 桌面应用通过 GitHub 发布源码，禁止误发布到 pub.dev。
+publish_to: 'none'
+# 应用显示版本与构建号；构建前由 scripts/sync_app_version.dart 同步。
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+# 应用运行依赖，具体版本由 pubspec.lock 固定。
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  crypto: ^3.0.7
+  archive: ^4.5.2
+  yaml: ^3.1.4
+  xml: ^7.0.1
+  html: ^0.15.6
+  ffi: ^2.1.4
+  filepicker_windows: ^3.0.2
+  image: ^4.5.4
+  pdf: ^3.11.3
+  flutter_markdown: ^0.7.7+1
+  flutter_math_fork: ^0.7.4
+  markdown: ^7.3.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # 静态分析规则见 analysis_options.yaml。
+  flutter_lints: ^6.0.0
+flutter:
+  # 内置 Material 图标字体。
+  uses-material-design: true
+  assets:
+    - assets/fastink_icon.png

@@ -1,0 +1,61 @@
+name: Windows packages
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Windows ${{ matrix.arch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            arch: x64
+          - runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Prepare Flutter 3.44.4
+        shell: powershell
+        run: |
+          $flutter = Join-Path $env:RUNNER_TEMP 'flutter'
+          git init $flutter
+          git -C $flutter -c protocol.version=2 fetch --depth=1 https://github.com/flutter/flutter.git ad70ec4617166f1c38e5d2bfd388af71fda14f06
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          git -C $flutter checkout --detach FETCH_HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bin = Join-Path $flutter 'bin'
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          & (Join-Path $bin 'flutter.bat') precache --windows
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build and verify package
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\scripts\build.ps1 -Architecture ${{ matrix.arch }} -Mode Native -ExternalTools
+          .\scripts\verify_windows.ps1 -Architecture ${{ matrix.arch }}
+      - name: Upload verified package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: FastInk-windows-${{ matrix.arch }}
+          path: |
+            dist/*-portable.zip
+            dist/*-SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Upload build logs
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-logs-${{ matrix.arch }}
+          path: build/reports/
+          if-no-files-found: ignore
