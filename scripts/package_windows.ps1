@@ -198,8 +198,6 @@ $stagingRoot = Join-Path $projectRoot ('build\packages\package-' + [guid]::NewGu
 $outputRoot = if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   Join-Path $projectRoot 'dist'
 } else {
-  $hostDart = Get-FastInkPeArchitecture (Join-Path (Split-Path -Parent $flutter) 'cache/dart-sdk/bin/dart.exe')
-  if ($hostDart -ne $Architecture) { throw "Building $target requires the $Architecture Flutter SDK." }
   [IO.Path]::GetFullPath($OutputDirectory)
 }
 
@@ -209,6 +207,8 @@ $versionGenerator = Join-Path $projectRoot 'scripts\sync_app_version.dart'
 if ($SkipBuild) {
   Invoke-CheckedCommand $dart @($versionGenerator, '--check')
 } else {
+  $hostDart = Get-FastInkPeArchitecture (Join-Path (Split-Path -Parent $flutter) 'cache/dart-sdk/bin/dart.exe')
+  if ($hostDart -ne $Architecture) { throw "Building $target requires the $Architecture Flutter SDK." }
   Invoke-CheckedCommand $dart @($versionGenerator)
   Push-Location -LiteralPath $projectRoot
   try { Invoke-CheckedCommand $flutter @('build', 'windows', '--release', '--no-pub') }
