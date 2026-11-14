@@ -49,7 +49,9 @@ try {
   $components=@('onenote/import.ps1','markdown/MERMAID-LICENSE.txt',
       'markdown/render_diagram.ps1','markdown/ResourceJob.cs','markdown/README.txt',
       'markdown/mermaid.min.js','poppler/pdfinfo.exe','qpdf/qpdf.exe','qpdf/qpdf30.dll')
-  foreach($file in @('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md','msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')) {
+  $requiredFiles=@('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md','msvcp140.dll','vcruntime140.dll')
+  if($Architecture -eq 'x64') {$requiredFiles+='vcruntime140_1.dll'}
+  foreach($file in $requiredFiles) {
     if(-not $archive.GetEntry("$bundle/$file")) {throw "Missing license or app-local runtime: $file"}
   }
   foreach($component in $components) {

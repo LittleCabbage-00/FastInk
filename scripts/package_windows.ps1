@@ -251,10 +251,10 @@ $pdfRuntime = Join-Path $runtimeDirectory 'tools/qpdf'
 Get-ChildItem -LiteralPath $pdfRuntime -File |
   Where-Object { $_.Name -match '^(concrt|msvcp|vcruntime)140.*\.dll$' } |
   ForEach-Object {
-    if ((Get-FastInkPeArchitecture $_.FullName) -ne $Architecture) {
-      throw "C++ runtime architecture mismatch: $($_.Name)"
+    # ARM64 的上游包还带有一个供 x64 仿真使用的运行库。
+    if ((Get-FastInkPeArchitecture $_.FullName) -eq $Architecture) {
+      Copy-Item -LiteralPath $_.FullName -Destination $runtimeDirectory -Force
     }
-    Copy-Item -LiteralPath $_.FullName -Destination $runtimeDirectory -Force
   }
 New-Item -ItemType Directory -Path $portableDirectory | Out-Null
 Copy-Item -Path (Join-Path $runtimeDirectory '*') `
