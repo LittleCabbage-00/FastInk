@@ -30,19 +30,25 @@ jobs:
         run: |
           $flutter = Join-Path $env:RUNNER_TEMP 'flutter'
           git init $flutter
-          git -C $flutter -c protocol.version=2 fetch --depth=1 https://github.com/flutter/flutter.git ad70ec4617166f1c38e5d2bfd388af71fda14f06
+          git -C $flutter -c protocol.version=2 fetch --depth=1 https://github.com/flutter/flutter.git refs/tags/3.44.4:refs/tags/3.44.4
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           git -C $flutter checkout --detach FETCH_HEAD
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((git -C $flutter rev-parse HEAD) -ne 'ad70ec4617166f1c38e5d2bfd388af71fda14f06') {
+            throw 'Flutter tag does not match the pinned revision'
+          }
           $bin = Join-Path $flutter 'bin'
           $bin | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           & (Join-Path $bin 'flutter.bat') precache --windows
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Prepare PDF and Mermaid tools
+        shell: powershell
+        run: .\scripts\setup_windows_tools.ps1 -Architecture ${{ matrix.arch }}
       - name: Build and verify package
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.ps1 -Architecture ${{ matrix.arch }} -Mode Native -ExternalTools
+          .\scripts\build.ps1 -Architecture ${{ matrix.arch }} -Mode Native
           .\scripts\verify_windows.ps1 -Architecture ${{ matrix.arch }}
       - name: Upload verified package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

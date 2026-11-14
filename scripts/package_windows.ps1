@@ -250,10 +250,12 @@ if (Test-Path -LiteralPath $portableDirectory) {
   Remove-FastInkGeneratedPath $portableDirectory | Out-Null
 }
 Copy-ReleaseBundle $releaseDirectory $runtimeDirectory
-if ($ExternalTools) {
-  foreach ($name in @('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md')) {
+foreach ($name in @('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md')) {
+  if (Test-Path -LiteralPath (Join-Path $projectRoot $name)) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $runtimeDirectory
   }
+}
+if ($ExternalTools) {
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'setup_windows_tools.ps1') -Destination $runtimeDirectory
 }
 New-Item -ItemType Directory -Path $portableDirectory | Out-Null
