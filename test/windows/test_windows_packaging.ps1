@@ -8,12 +8,12 @@ $fixture = Join-Path $tempRoot ('fastink-package-check-' + [guid]::NewGuid().ToS
 $release = Join-Path $fixture 'release'
 $output = Join-Path $fixture 'output'
 try {
-  foreach ($directory in @('data\flutter_assets', 'tools\poppler', 'tools\qpdf', 'FastInkData')) {
+  foreach ($directory in @('data\flutter_assets', 'tools\poppler', 'tools\qpdf', 'tools\markdown', 'FastInkData')) {
     New-Item -ItemType Directory -Path (Join-Path $release $directory) -Force | Out-Null
   }
   foreach ($name in @('FastInk.exe', 'flutter_windows.dll', 'native_assets.json', 'BUILD-INFO.json',
       'data\app.so', 'data\icudtl.dat', 'data\flutter_assets\AssetManifest.bin', 'tools\poppler\pdfinfo.exe',
-      'tools\qpdf\qpdf.exe', 'tools\qpdf\qpdf30.dll', 'tools\qpdf\LICENSE.txt')) {
+      'tools\qpdf\qpdf.exe', 'tools\qpdf\qpdf30.dll', 'tools\qpdf\LICENSE.txt', 'tools\markdown\mermaid.min.js')) {
     [IO.File]::WriteAllText((Join-Path $release $name), "fixture:$name")
   }
   # 写入最小 PE 头供打包器校验架构。测试只读文件头，不启动这些夹具。

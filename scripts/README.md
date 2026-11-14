@@ -22,7 +22,7 @@ PowerShell 脚本使用 UTF-8 BOM 编码，以兼容 Windows PowerShell 5.1；�
 
 诊断截图写入 `build/diagnostics/`，构建、测试与校验报告写入 `build/reports/`。测试可通过 `-DenseInkPath` 和 `-PdfSamplePath` 指定本机样本，样本不放入代码或发行包。
 
-`windows/tools/` 存放运行时组件。GitHub Actions 使用 `-ExternalTools` 打包应用和下载脚本，解压后可下载 PDF 与 Mermaid 组件。每种架构独立输出便携包和 SHA-256 文件。校验脚本检查 PE 和 Dart AOT 文件头，并启动本次校验的副本。
+`windows/tools/` 存放运行时组件。GitHub Actions 在构建前下载组件，并把它们装进便携包。每种架构独立输出 ZIP 和 SHA-256 文件。校验脚本检查 PE 和 Dart AOT 文件头，并启动本次校验的副本。
 
 Windows 原生探针、打包与资源保护回归在 `test/windows/`。图标由 `generate_icon.py` 生成，普通构建直接读取项目内的 PNG 和 ICO。
 

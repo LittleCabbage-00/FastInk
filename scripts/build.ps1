@@ -9,7 +9,6 @@ param(
   [switch]$Installer,
   [switch]$RunTests,
   [switch]$KeepStaging,
-  [switch]$ExternalTools,
   [ValidateRange(1536,16384)][int]$MaxBuildMemoryMB = 2560,
   [ValidateRange(1024,16384)][int]$ReserveMemoryMB = 2560,
   [ValidateRange(10,75)][int]$CpuPercent = 50,
@@ -35,7 +34,7 @@ try {
   if ($budget -lt 1536) { throw "Not enough free RAM to build safely ($availableMB MB available). Close unused apps and retry; system reserve is $ReserveMemoryMB MB." }
   $heap = [int][math]::Min($CompilerHeapMB,[math]::Floor(($budget-512)/2))
   $worker = @{}
-  foreach ($name in @('Mode','Architecture','FlutterPath','LauncherDirectory','OutputDirectory','Installer','RunTests','KeepStaging','ExternalTools')) {
+  foreach ($name in @('Mode','Architecture','FlutterPath','LauncherDirectory','OutputDirectory','Installer','RunTests','KeepStaging')) {
     if ($PSBoundParameters.ContainsKey($name)) {
       $value = $PSBoundParameters[$name]
       if ($value -is [Management.Automation.SwitchParameter]) { $value = $value.IsPresent }

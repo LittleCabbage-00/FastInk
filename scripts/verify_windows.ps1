@@ -47,14 +47,10 @@ try {
   $compiled=(Get-FileHash -LiteralPath (Join-Path $projectRoot $compiledPath) -Algorithm SHA256).Hash
   if((Get-ArchiveHash $aot[0]) -ne $compiled) {throw 'Packaged AOT differs from the current compiled application'}
   $components=@('onenote/import.ps1','markdown/MERMAID-LICENSE.txt',
-      'markdown/render_diagram.ps1','markdown/ResourceJob.cs','markdown/README.txt')
-  if($info.externalTools) {
-    if($names -match '/tools/(poppler/|qpdf/|share/|markdown/mermaid\.min\.js$)') {throw 'External-tool package contains separately downloaded files'}
-    foreach($file in @('setup_windows_tools.ps1','LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md')) {
-      if(-not $archive.GetEntry("$bundle/$file")) {throw "Missing setup instructions or license: $file"}
-    }
-  } else {
-    $components+=@('markdown/mermaid.min.js','poppler/pdfinfo.exe','qpdf/qpdf.exe','qpdf/qpdf30.dll')
+      'markdown/render_diagram.ps1','markdown/ResourceJob.cs','markdown/README.txt',
+      'markdown/mermaid.min.js','poppler/pdfinfo.exe','qpdf/qpdf.exe','qpdf/qpdf30.dll')
+  foreach($file in @('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md','msvcp140.dll','vcruntime140.dll','vcruntime140_1.dll')) {
+    if(-not $archive.GetEntry("$bundle/$file")) {throw "Missing license or app-local runtime: $file"}
   }
   foreach($component in $components) {
     $entry=@($archive.Entries | Where-Object {$_.FullName.EndsWith('/tools/'+$component)})
@@ -83,10 +79,11 @@ try {
     if($aotReader.ReadUInt16() -ne $machine) {throw 'Dart AOT architecture mismatch'}
   } finally {$aotReader.Dispose()}
   if(-not $SkipLaunch) {
-    if(-not $info.externalTools) {
-      $qpdf=& (Join-Path $runtime 'tools/qpdf/qpdf.exe') --version
-      if($LASTEXITCODE -ne 0 -or ($qpdf -join '') -notmatch '12.4.2') {throw 'Packaged qpdf cannot start'}
-    }
+    $qpdf=& (Join-Path $runtime 'tools/qpdf/qpdf.exe') --version
+    if($LASTEXITCODE -ne 0 -or ($qpdf -join '') -notmatch '12.4.2') {throw 'Packaged qpdf cannot start'}
+    # pdfinfo -v 将版本打印到 stderr，使用进程退出码核对能否加载。
+    $pdfInfo=Start-Process -FilePath (Join-Path $runtime 'tools/poppler/pdfinfo.exe') -ArgumentList '-v' -WindowStyle Hidden -Wait -PassThru
+    if($pdfInfo.ExitCode -ne 0) {throw 'Packaged pdfinfo cannot start'}
     $stdout=Join-Path $reports "smoke-$version-$target-stdout.log"
     $stderr=Join-Path $reports "smoke-$version-$target-stderr.log"
     # 只启动并关闭本脚本创建的隐藏进程，不枚举或结束用户的窗口。

@@ -5,7 +5,6 @@ param(
   [switch]$SkipBuild,
   [switch]$SkipInstaller,
   [switch]$KeepStaging,
-  [switch]$ExternalTools,
   [string]$OutputDirectory,
   [string]$ReleaseDirectory,
   [string]$FlutterPath,
@@ -159,18 +158,7 @@ function Copy-ReleaseBundle {
   $toolsSource = Join-Path $Source 'tools'
   if (Test-Path -LiteralPath $toolsSource) {
     Assert-NoBundleLinks $toolsSource
-    if ($ExternalTools) {
-      $destinationTools = Join-Path $Destination 'tools'
-      New-Item -ItemType Directory -Path $destinationTools -Force | Out-Null
-      Copy-Item -LiteralPath (Join-Path $toolsSource 'onenote') -Destination $destinationTools -Recurse
-      $markdownTools = Join-Path $destinationTools 'markdown'
-      New-Item -ItemType Directory -Path $markdownTools -Force | Out-Null
-      Get-ChildItem -LiteralPath (Join-Path $toolsSource 'markdown') -File |
-        Where-Object { $_.Name -ne 'mermaid.min.js' } |
-        Copy-Item -Destination $markdownTools
-    } else {
-      Copy-Item -LiteralPath $toolsSource -Destination $Destination -Recurse -Force
-    }
+    Copy-Item -LiteralPath $toolsSource -Destination $Destination -Recurse -Force
   }
 }
 
@@ -221,6 +209,9 @@ $requiredFiles = @(
   (Join-Path $releaseDirectory 'data\app.so'),
   (Join-Path $releaseDirectory 'data\icudtl.dat'),
   (Join-Path $releaseDirectory 'data\flutter_assets\AssetManifest.bin')
+  (Join-Path $releaseDirectory 'tools\poppler\pdfinfo.exe')
+  (Join-Path $releaseDirectory 'tools\qpdf\qpdf.exe')
+  (Join-Path $releaseDirectory 'tools\markdown\mermaid.min.js')
 )
 foreach ($required in $requiredFiles) {
   if (-not (Test-Path -LiteralPath $required)) {
@@ -255,9 +246,16 @@ foreach ($name in @('LICENSE','FLUTTER-LICENSE','THIRD_PARTY_NOTICES.md')) {
     Copy-Item -LiteralPath (Join-Path $projectRoot $name) -Destination $runtimeDirectory
   }
 }
-if ($ExternalTools) {
-  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'setup_windows_tools.ps1') -Destination $runtimeDirectory
-}
+# qpdf 随包提供同架构的 Visual C++ 运行库。放一份在主程序旁供启动器和 Flutter 引擎加载。
+$pdfRuntime = Join-Path $runtimeDirectory 'tools/qpdf'
+Get-ChildItem -LiteralPath $pdfRuntime -File |
+  Where-Object { $_.Name -match '^(concrt|msvcp|vcruntime)140.*\.dll$' } |
+  ForEach-Object {
+    if ((Get-FastInkPeArchitecture $_.FullName) -ne $Architecture) {
+      throw "C++ runtime architecture mismatch: $($_.Name)"
+    }
+    Copy-Item -LiteralPath $_.FullName -Destination $runtimeDirectory -Force
+  }
 New-Item -ItemType Directory -Path $portableDirectory | Out-Null
 Copy-Item -Path (Join-Path $runtimeDirectory '*') `
   -Destination $portableDirectory -Recurse -Force

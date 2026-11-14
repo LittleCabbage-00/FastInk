@@ -3,14 +3,15 @@
 FastInk 自有代码使用 [MIT](LICENSE)。第三方源码和组件沿用各自的许可证。
 
 - Flutter Windows 启动器包含依据 Flutter 模板改写的代码，许可证见 [FLUTTER-LICENSE](FLUTTER-LICENSE)。Dart 依赖的版本见 [pubspec.lock](pubspec.lock)。Flutter 构建生成的 `data/flutter_assets/NOTICES.Z` 包含依赖声明。
-- PDF 渲染和文本提取使用 [Poppler](https://poppler.freedesktop.org/)，Windows 二进制取自 [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases/tag/v26.09.0-0)。Poppler 及随包组件以各自许可证分发。
+- PDF 渲染和文本提取使用 [Poppler](https://poppler.freedesktop.org/)，Windows 二进制取自 [Poppler for Windows](https://github.com/oschwartz10612/poppler-windows/releases/tag/v26.09.0-0)。Poppler 采用 GPL-2.0-or-later。发布包的 `tools/share/source` 提供源码、poppler-data 源包和 conda-forge 的实际构建配方、补丁与许可。数据许可位于 `tools/share/poppler`。
 - PDF 页面重组和批注叠加使用 [qpdf 12.4.2](https://github.com/qpdf/qpdf/releases/tag/v12.4.2)，采用 Apache-2.0。
 - Markdown 图表使用 [Mermaid 12.2.0](https://github.com/mermaid-js/mermaid)。许可证见 [MERMAID-LICENSE.txt](windows/tools/markdown/MERMAID-LICENSE.txt)。
 - OneNote 导入使用本机的 Microsoft OneNote 桌面版和 Windows 组件。
+- 启动器和部分外部程序使用 Microsoft Visual C++ Redistributable。详见 [Microsoft 的可再分发文件说明](https://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files)。
 
-## 安装组件
+## 从源码构建时准备组件
 
-发布包解压后，在目录中运行 `powershell -ExecutionPolicy Bypass -File .\setup_windows_tools.ps1`。从源码构建时，在项目根目录执行 `.\scripts\setup_windows_tools.ps1`。脚本校验上游压缩包的 SHA-256，再将组件放到相应目录。
+从源码构建时，在项目根目录执行 `.\scripts\setup_windows_tools.ps1`。脚本校验上游压缩包的 SHA-256，再将组件放到相应目录。便携发布包随软件提供这些组件。
 
 qpdf 提供原生 ARM64 版本。Poppler 使用 x64 外部进程，在 Windows 11 ARM64 上由系统仿真运行。详见 [Windows on Arm 仿真](https://learn.microsoft.com/windows/arm/apps-on-arm-x86-emulation)。
 

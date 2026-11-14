@@ -43,13 +43,32 @@ try {
   Expand-CheckedArchive 'https://github.com/oschwartz10612/poppler-windows/releases/download/v26.09.0-0/Release-26.09.0-0.zip' 'poppler.zip' '7a6f256a0ddf7536182246a5733331bf4677cbcc34f4663774947ad34556c8d0'
   Expand-CheckedArchive "https://github.com/qpdf/qpdf/releases/download/v12.4.2/$($qpdf.Name).zip" 'qpdf.zip' $qpdf.Hash
   Expand-CheckedArchive 'https://registry.npmjs.org/mermaid/-/mermaid-12.2.0.tgz' 'mermaid.tgz' '071914164d0f6d53e5c26a10a220230d4ae8d37ed0f2263fbf072266f0af3a0a'
+  Expand-CheckedArchive 'https://conda.anaconda.org/conda-forge/win-64/poppler-26.09.0-h924501e_0.conda' 'poppler-conda.zip' 'bb319f6881d91e175f90a9d33a25313e4cfddc15dd234521519985baf92fefcd'
 
   $popplerTarget = Join-Path $ToolsDirectory 'poppler'
   $qpdfTarget = Join-Path $ToolsDirectory 'qpdf'
   $shareTarget = Join-Path $ToolsDirectory 'share'
   New-Item -ItemType Directory -Path $popplerTarget,$qpdfTarget,$shareTarget -Force | Out-Null
-  Copy-Item -Path (Join-Path $temp 'poppler-26.09.0/Library/bin/*') -Destination $popplerTarget -Force
+  # 只取实际调用的程序及其 PE 导入依赖。Windows 自带的 UCRT 由系统加载。
+  $popplerFiles = @(
+    'pdfinfo.exe', 'pdftohtml.exe', 'pdftoppm.exe', 'pdftotext.exe', 'pdfunite.exe',
+    'poppler.dll', 'deflate.dll', 'freetype.dll', 'icudt78.dll', 'icuuc78.dll',
+    'jpeg8.dll', 'lcms2.dll', 'lerc.dll', 'libcrypto-3-x64.dll', 'libcurl.dll',
+    'liblzma.dll', 'libpng16.dll', 'libssh2.dll', 'msvcp140.dll', 'openjp2.dll',
+    'psl-5.dll', 'tiff.dll', 'vcruntime140.dll', 'vcruntime140_1.dll', 'zlib.dll', 'zstd.dll'
+  )
+  foreach ($name in $popplerFiles) {
+    Copy-Item -LiteralPath (Join-Path $temp "poppler-26.09.0/Library/bin/$name") -Destination $popplerTarget -Force
+  }
   Copy-Item -LiteralPath (Join-Path $temp 'poppler-26.09.0/share/poppler') -Destination $shareTarget -Recurse -Force
+  # conda 包的 info 归档保存生成这份 Poppler 二进制使用的补丁和构建配方。
+  $sources = Join-Path $shareTarget 'source'
+  New-Item -ItemType Directory -Path $sources -Force | Out-Null
+  Expand-CheckedArchive 'https://poppler.freedesktop.org/poppler-26.09.0.tar.xz' 'poppler-26.09.0.tar.xz' '8059eadb6805340768f138c465b57f8164c92b4a0773c37ef031ea6c0d987b2e'
+  Expand-CheckedArchive 'https://poppler.freedesktop.org/poppler-data-0.4.12.tar.gz' 'poppler-data-0.4.12.tar.gz' 'c835b640a40ce357e1b83666aabd95edffa24ddddd49b8daff63adb851cdab74'
+  foreach ($name in @('poppler-26.09.0.tar.xz','poppler-data-0.4.12.tar.gz','info-poppler-26.09.0-h924501e_0.tar.zst')) {
+    Copy-Item -LiteralPath (Join-Path $temp $name) -Destination $sources -Force
+  }
   Copy-Item -Path (Join-Path $temp "$($qpdf.Name)/bin/*") -Destination $qpdfTarget -Force
   $qpdfLicense = Join-Path $temp "$($qpdf.Name)/share/doc/qpdf/manual-html/license.html"
   Copy-Item -LiteralPath $qpdfLicense -Destination $qpdfTarget -Force

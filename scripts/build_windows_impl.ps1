@@ -10,7 +10,6 @@ param(
   [switch]$Installer,
   [switch]$RunTests,
   [switch]$KeepStaging,
-  [switch]$ExternalTools,
   [int]$CompilerHeapMB = 1024
 )
 
@@ -160,8 +159,11 @@ try {
     Invoke-Checked $flutter @('assemble', '--resource-pool-size=1', "--output=$assembled/", "-dTargetPlatform=$target",
       '-dBuildMode=release', '-dTargetFile=lib/main.dart', "-dExtraGenSnapshotOptions=$genOptions", "-dFrontendServerStarterPath=$frontend", "release_bundle_${target}_assets")
     $nativeAssetFiles = @(Get-ChildItem -LiteralPath (Join-Path $assembled 'native_assets') -File -Recurse -ErrorAction SilentlyContinue)
-    $launcherAssets = Get-Content -LiteralPath (Join-Path $launcher 'native_assets.json') -Raw | ConvertFrom-Json
-    if ($nativeAssetFiles.Count -gt 0 -or @($launcherAssets.'native-assets'.PSObject.Properties).Count -gt 0) {
+    $launcherManifest = Join-Path $launcher 'native_assets.json'
+    $launcherAssets = if (Test-Path -LiteralPath $launcherManifest) {
+      (Get-Content -LiteralPath $launcherManifest -Raw | ConvertFrom-Json).'native-assets'
+    }
+    if ($nativeAssetFiles.Count -gt 0 -or ($launcherAssets -and @($launcherAssets.PSObject.Properties).Count -gt 0)) {
       throw 'Dart native asset hooks require -Mode Native so their libraries are bundled correctly.'
     }
     # 每次打包创建全新目录，避免带入旧资源或个人文件。
@@ -173,13 +175,15 @@ try {
     Copy-Item -LiteralPath (Join-Path $sdk "bin/cache/artifacts/engine/$target/icudtl.dat") -Destination (Join-Path $release 'data')
     Copy-Item -LiteralPath (Join-Path $assembled 'windows\app.so') -Destination (Join-Path $release 'data')
     Copy-Item -LiteralPath (Join-Path $assembled 'flutter_assets') -Destination (Join-Path $release 'data') -Recurse
-    Copy-Item -LiteralPath (Join-Path $launcher 'native_assets.json') -Destination $release
+    if (Test-Path -LiteralPath $launcherManifest) {
+      Copy-Item -LiteralPath $launcherManifest -Destination $release
+    }
   }
   # Poppler 程序、DLL、数据与许可证一同分发。
-  if (-not $ExternalTools -and -not (Test-Path -LiteralPath (Join-Path $release 'tools\poppler\pdfinfo.exe'))) {
+  if (-not (Test-Path -LiteralPath (Join-Path $release 'tools\poppler\pdfinfo.exe'))) {
     Copy-Item -LiteralPath (Join-Path $projectRoot 'windows\tools') -Destination $release -Recurse
   }
-  if (-not $ExternalTools -and -not (Test-Path -LiteralPath (Join-Path $release 'tools\qpdf\qpdf.exe'))) {
+  if (-not (Test-Path -LiteralPath (Join-Path $release 'tools\qpdf\qpdf.exe'))) {
     $qpdfTools = Join-Path $projectRoot 'windows\tools\qpdf'
     if (-not (Test-Path -LiteralPath (Join-Path $qpdfTools 'qpdf.exe'))) {
       throw 'Fast PDF export tools are missing: windows\tools\qpdf.'
@@ -194,7 +198,6 @@ try {
     $info = [ordered]@{
     version = (Select-String -LiteralPath 'pubspec.yaml' -Pattern '^version:\s*(.+)$').Matches[0].Groups[1].Value.Trim()
     architecture = $Architecture
-    externalTools = [bool]$ExternalTools
     mode = $Mode
     nativeLauncherReused = ($Mode -eq 'FlutterOnly')
     nativeFingerprint = $nativeFingerprint
@@ -204,7 +207,7 @@ try {
   $packageArgs = @{
     SkipBuild = $true; SkipInstaller = (-not $Installer.IsPresent)
     KeepStaging = $KeepStaging; ReleaseDirectory = $release; FlutterPath = $flutter
-    Architecture = $Architecture; ExternalTools = $ExternalTools
+    Architecture = $Architecture
   }
   if ($OutputDirectory) { $packageArgs.OutputDirectory = $OutputDirectory }
   & (Join-Path $projectRoot 'scripts\package_windows.ps1') @packageArgs
@@ -212,9 +215,14 @@ try {
   New-Item -ItemType Directory -Path $cache -Force | Out-Null
   foreach ($name in @('FastInk.exe', 'flutter_windows.dll', 'native_assets.json')) {
     $source = Join-Path $release $name
-    if ([IO.Path]::GetFullPath($source) -ne [IO.Path]::GetFullPath((Join-Path $cache $name))) {
+    if ((Test-Path -LiteralPath $source) -and
+        [IO.Path]::GetFullPath($source) -ne [IO.Path]::GetFullPath((Join-Path $cache $name))) {
       Copy-Item -LiteralPath $source -Destination $cache -Force
     }
+  }
+  if (-not (Test-Path -LiteralPath (Join-Path $release 'native_assets.json'))) {
+    $cachedManifest = Join-Path $cache 'native_assets.json'
+    if (Test-Path -LiteralPath $cachedManifest) { Remove-Item -LiteralPath $cachedManifest }
   }
   $info | ConvertTo-Json | Set-Content -LiteralPath $cacheInfoPath -Encoding UTF8
   if ($temporaryRelease -and -not $KeepStaging) {
