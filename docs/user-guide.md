@@ -1,5 +1,11 @@
 # 用户指南
 
+## 安装与打开
+
+从[发布页](https://github.com/LittleCabbage-00/FastInk/releases/latest)下载与电脑架构对应的 `-setup.exe`，运行安装程序，再从开始菜单打开 FastInk。安装包内已包含 PDF 和 Mermaid 组件。
+
+便携版解压后直接运行 `FastInk.exe`，资料默认保存在程序旁边的 `FastInkData`。升级便携版前可在通用设置里备份资料库。卸载 FastInk 安装版会保留文稿和设置。
+
 ## 资料库和文件夹
 
 手写笔记与 Markdown 各自管理文件夹。点击文件夹展开，拖入文稿，或将文稿拖到移出区域或上一级目标。废纸篓提供恢复、永久删除和清空。

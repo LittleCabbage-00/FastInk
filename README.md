@@ -4,9 +4,25 @@ FastInk 是我为 Windows 写的手写笔记工具，也能编辑 Markdown。
 
 ## 下载
 
-[Windows 便携版](https://github.com/LittleCabbage-00/FastInk/releases/tag/v1.0.0)
+[下载 FastInk](https://github.com/LittleCabbage-00/FastInk/releases/latest)
 
-Intel 或 AMD 的 64 位 Windows 选 `x64`。高通 Surface 等 Windows on Arm 设备选 `arm64`。解压后打开 `FastInk.exe`，文稿和设置保存在同目录下的 `FastInkData`。
+Intel 或 AMD 的 64 位 Windows 选 `x64`。高通 Surface 等 Windows on Arm 设备选 `arm64`。
+
+双击 `-setup.exe` 安装，装好后从开始菜单打开 FastInk。想把程序和资料放在一起，可以下载 `-portable.zip`，解压后打开 `FastInk.exe`。便携版的文稿和设置默认保存在同目录下的 `FastInkData`。
+
+## 界面预览
+
+手写文稿的页面导航、笔工具和纸张。
+
+![手写文稿，左侧是页面缩略图，中央是点阵纸上的阅读角草图](docs/images/handwriting.png)
+
+Markdown 分栏编辑，左边写源码，右边看排版。
+
+![Markdown 编辑器中的待办清单和表格预览](docs/images/markdown.png)
+
+资料库按封面展示文稿。手写笔记和 Markdown 各有入口。
+
+![资料库中的文件夹、笔记封面和模板](docs/images/library.png)
 
 ## 为什么写 FastInk
 
@@ -46,5 +62,7 @@ Intel 或 AMD 的 64 位 Windows 选 `x64`。高通 Surface 等 Windows on Arm �
 ```
 
 构建结果写到 `dist`。构建脚本默认限制内存和 CPU，并串行编译。第三方组件的版本、下载来源和许可见 [第三方组件说明](THIRD_PARTY_NOTICES.md)。测试、打包校验和其他参数见 [开发脚本](scripts/README.md)。
+
+构建安装程序时，在构建命令末尾加 `-Installer`。
 
 FastInk 自有代码使用 [MIT 许可证](LICENSE)。
