@@ -48,14 +48,15 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          .\scripts\build.ps1 -Architecture ${{ matrix.arch }} -Mode Native
-          .\scripts\verify_windows.ps1 -Architecture ${{ matrix.arch }}
+          .\scripts\build.ps1 -Architecture ${{ matrix.arch }} -Mode Native -Installer
+          .\scripts\verify_windows.ps1 -Architecture ${{ matrix.arch }} -Installer
       - name: Upload verified package
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: FastInk-windows-${{ matrix.arch }}
           path: |
             dist/*-portable.zip
+            dist/*-setup.exe
             dist/*-SHA256SUMS.txt
           if-no-files-found: error
       - name: Upload build logs

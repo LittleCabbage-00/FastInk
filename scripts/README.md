@@ -5,11 +5,13 @@
 ```powershell
 .\scripts\build.ps1                     # 编译并打包；默认限制内存 2560 MB、CPU 50%
 .\scripts\build.ps1 -Mode FlutterOnly   # 复用兼容的 Windows 启动器
+.\scripts\build.ps1 -Installer          # 增加 EXE 安装程序
 .\scripts\build.ps1 -Architecture arm64 -Mode Native # 在 ARM64 Windows 上构建
 .\scripts\setup_windows_tools.ps1       # 下载 PDF 和 Mermaid 组件
 .\scripts\test.ps1                      # 串行静态分析和完整测试，同样受资源限制
 .\scripts\test.ps1 -Preview             # 额外保存界面预览
 .\scripts\verify_windows.ps1            # 校验当前版本 ZIP 并用自己的隐藏进程验证启动
+.\scripts\verify_windows.ps1 -Installer # 在干净的 Windows 环境试装与卸载
 .\scripts\clean.ps1 -WhatIf             # 查看可清理的构建产物
 .\scripts\clean.ps1                     # 清理产物，保留启动器缓存、非空资料库和正在运行的包
 ```
@@ -22,7 +24,7 @@ PowerShell 脚本使用 UTF-8 BOM 编码，以兼容 Windows PowerShell 5.1；�
 
 诊断截图写入 `build/diagnostics/`，构建、测试与校验报告写入 `build/reports/`。测试可通过 `-DenseInkPath` 和 `-PdfSamplePath` 指定本机样本，样本不放入代码或发行包。
 
-`windows/tools/` 存放运行时组件。GitHub Actions 在构建前下载组件，并把它们装进便携包。每种架构独立输出 ZIP 和 SHA-256 文件。校验脚本检查 PE 和 Dart AOT 文件头，并启动本次校验的副本。
+`windows/tools/` 存放运行时组件。GitHub Actions 在构建前下载组件，x64 和 ARM64 各自输出 EXE 安装程序、便携 ZIP 和 SHA-256 清单。校验会核对便携包的程序架构和启动结果，再试装 EXE，逐项比对安装的文件并卸载测试副本。
 
 Windows 原生探针、打包与资源保护回归在 `test/windows/`。图标由 `generate_icon.py` 生成，普通构建直接读取项目内的 PNG 和 ICO。
 

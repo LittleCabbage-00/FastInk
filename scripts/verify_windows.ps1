@@ -2,6 +2,7 @@
 [CmdletBinding()]
 param(
   [ValidateSet('x64', 'arm64')][string]$Architecture = ($env:PROCESSOR_ARCHITECTURE -replace '^AMD64$', 'x64'),
+  [switch]$Installer,
   [switch]$SkipLaunch
 )
 Set-StrictMode -Version Latest
@@ -16,6 +17,7 @@ $Architecture=$Architecture.ToLowerInvariant()
 $target="windows-$Architecture"
 $bundle="FastInk-$version-$target-portable"
 $package=Join-Path $projectRoot "dist/$bundle.zip"
+$checksums=Get-Content -LiteralPath (Join-Path $projectRoot "dist/FastInk-$version-$target-SHA256SUMS.txt")
 $reports=Join-Path $projectRoot 'build/reports'
 New-Item -ItemType Directory -Path $reports -Force | Out-Null
 # 计算 ZIP 指定条目内容的 SHA-256，读取完成后释放条目流与哈希对象；不为校验而覆盖本地文件。
@@ -23,6 +25,59 @@ function Get-ArchiveHash($Entry) {
   $stream=$Entry.Open(); $hash=[Security.Cryptography.SHA256]::Create()
   try {return [BitConverter]::ToString($hash.ComputeHash($stream)).Replace('-','')}
   finally {$stream.Dispose(); $hash.Dispose()}
+}
+
+# 同时匹配摘要与文件名，防止把同一清单的另一项当作当前文件。
+function Get-VerifiedHash([string]$Path) {
+  $hash=(Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+  if ($checksums -notcontains "$hash  $(Split-Path -Leaf $Path)") {
+    throw "SHA256 mismatch: $Path"
+  }
+  return $hash
+}
+
+# 在 CI 的临时目录试装和卸载。用便携包校验过的文件对照安装内容。
+function Test-Installer([string]$Setup, [string]$Destination, [string]$Portable) {
+  $uninstallKey='Software\Microsoft\Windows\CurrentVersion\Uninstall\{8B24933E-55FC-4E4B-B8AE-3C58F18A4F93}_is1'
+  if ((Test-Path -LiteralPath "HKCU:\$uninstallKey") -or (Test-Path -LiteralPath "HKLM:\$uninstallKey")) {
+    throw 'FastInk is already installed. Run the install test on a clean Windows runner.'
+  }
+  $installLog=Join-Path $reports "install-$version-$target.log"
+  $uninstallLog=Join-Path $reports "uninstall-$version-$target.log"
+  try {
+    $process=Start-Process -FilePath $Setup -ArgumentList @(
+      '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/NOICONS','/NOCLOSEAPPLICATIONS',
+      "/DIR=`"$Destination`"","/LOG=`"$installLog`""
+    ) -WindowStyle Hidden -Wait -PassThru
+    if ($process.ExitCode -ne 0) {throw "Installer exited with $($process.ExitCode). See $installLog"}
+    foreach ($file in Get-ChildItem -LiteralPath $Portable -File -Recurse -Force) {
+      $relative=$file.FullName.Substring($Portable.Length+1)
+      if ($relative -eq '.fastink-portable') {continue}
+      $installed=Join-Path $Destination $relative
+      if ((Get-FileHash -LiteralPath $installed).Hash -ne (Get-FileHash -LiteralPath $file.FullName).Hash) {
+        throw "Installed content differs: $relative"
+      }
+    }
+    if (Test-Path -LiteralPath (Join-Path $Destination '.fastink-portable')) {
+      throw 'The installer contains the portable marker'
+    }
+  } finally {
+    $uninstaller=Join-Path $Destination 'unins000.exe'
+    if (Test-Path -LiteralPath $uninstaller) {
+      $process=Start-Process -FilePath $uninstaller -ArgumentList @(
+        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/LOG=`"$uninstallLog`""
+      ) -WindowStyle Hidden -Wait -PassThru
+      if ($process.ExitCode -ne 0 -or (Test-Path -LiteralPath (Join-Path $Destination 'FastInk.exe'))) {
+        throw "Installer cleanup failed. See $uninstallLog"
+      }
+    }
+  }
+}
+
+$setupHash=$null
+if ($Installer) {
+  $setup=Join-Path $projectRoot "dist/FastInk-$version-$target-setup.exe"
+  $setupHash=Get-VerifiedHash $setup
 }
 $archive=[IO.Compression.ZipFile]::OpenRead($package)
 try {
@@ -62,14 +117,16 @@ try {
       throw "Stale runtime component: $component"
     }
   }
-  $sum=(Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-  if(-not ((Get-Content -LiteralPath (Join-Path $projectRoot "dist/FastInk-$version-$target-SHA256SUMS.txt") -Raw).Contains($sum))) {throw 'SHA256 mismatch'}
+  $sum=Get-VerifiedHash $package
 } finally {$archive.Dispose()}
 $verify=Join-Path $projectRoot ('build/verify-'+[guid]::NewGuid().ToString('N'))
 $smoke=$null
 try {
   [IO.Compression.ZipFile]::ExtractToDirectory($package,$verify)
   $runtime=Join-Path $verify $bundle
+  if ($Installer -and -not $SkipLaunch) {
+    Test-Installer $setup (Join-Path $verify 'installed') $runtime
+  }
   foreach($binary in @('FastInk.exe','flutter_windows.dll')) {
     if((Get-FastInkPeArchitecture (Join-Path $runtime $binary)) -ne $Architecture) {throw "Architecture mismatch: $binary"}
   }
@@ -96,7 +153,8 @@ try {
     if($smoke.HasExited) {throw "Packaged app exited: $($smoke.ExitCode)"}
     if((Get-Item -LiteralPath $stderr).Length -gt 0) {throw 'The app reported startup errors'}
   }
-  @{version=$fullVersion; architecture=$Architecture; zip=$package; sha256=$sum; startupVerified=(-not $SkipLaunch.IsPresent)} |
+  @{version=$fullVersion; architecture=$Architecture; zip=$package; sha256=$sum; startupVerified=(-not $SkipLaunch.IsPresent)
+    installerSha256=$setupHash; installationVerified=($Installer.IsPresent -and -not $SkipLaunch.IsPresent)} |
     ConvertTo-Json | Set-Content -LiteralPath (Join-Path $reports "verify-$version-$target.json") -Encoding UTF8
   Write-Output "PASS: $fullVersion $target ZIP, runtime components, compiled AOT, SHA256 and requested startup checks."
 } finally {
